@@ -23,7 +23,7 @@ module.exports = {
      * @optional
      */
     description: "TODO securonix integration description",
-    entityTypes: [&#39; ipv4 &#39;],
+    entityTypes: ['ipv4'],
     /**
      * An array of style files (css or less) that will be included for your integration. Any styles specified in
      * the below files can be used in your custom template.
@@ -82,7 +82,7 @@ module.exports = {
         // the directory you specify is writable by the `polarityd:polarityd` user and group.
 
         //directoryPath: '/var/log/polarity-integrations',
-        level: 'info',  //trace, debug, info, warn, error, fatal
+        level: 'trace',  //trace, debug, info, warn, error, fatal
     },
     /**
      * Options that are displayed to the user/admin in the Polarity integration user-interface.  Should be structured
@@ -102,17 +102,8 @@ module.exports = {
             adminOnly: true
         },
         {
-            key: "username",
-            name: "Username",
-            description: "example description of this option",
-            default: "",
-            type: "text",
-            userCanEdit: false,
-            adminOnly: true
-        },
-        {
-            key: "password",
-            name: "Password",
+            key: "token",
+            name: "Token",
             description: "example description of this option",
             default: "",
             type: "text",

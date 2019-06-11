@@ -6,6 +6,11 @@ let Logger;
 let requestWithDefaults;
 let requestOptions = {};
 
+let NodeCache = require('node-cache');
+let tokenCache = new NodeCache({
+    stdTTL: 60 * 60
+});
+
 function handleRequestError(request) {
     return (options, expectedStatusCode, callback) => {
         return request(options, (err, resp, body) => {
@@ -24,64 +29,58 @@ function doLookup(entities, options, callback) {
 
     Logger.trace('options are: ', options);
 
-    requestWithDefaults({
-        url: `${options.host}/token/generate`,
-        headers: {
-            username: options.username,
-            password: options.password,
-            tenant: options.tenant
-        }
-    }, 200, (err, body) => {
-        if (err) {
-            callback({ err: err });
-            return;
-        }
+    let results = [];
 
-        let token = body;
-        let results = [];
+    Logger.trace('about to loop');
 
-        async.forEach(entities, (entity, cb) => {
-            requestWithDefaults(
-                {
-                    url: `${options.host}/spotter/index/search`,
-                    qs: {
-                        query: `index=asset and key_ip = "${enitty.value}"`
-                    },
-                    headers: {
-                        token: token
-                    }
+    async.forEach(entities, (entity, cb) => {
+        Logger.trace('looking up entity ' + entity.value);
+
+        requestWithDefaults(
+            {
+                url: `${options.host}/spotter/index/search`,
+                qs: {
+                    query: `index=asset and key_ip = "${entity.value}"`
                 },
-                201,
-                (err, body) => {
-                    if (err) {
-                        cb(err);
-                        return
-                    }
+                headers: {
+                    token: options.token
+                }
+            },
+            200,
+            (err, body) => {
+                if (err) {
+                    Logger.trace('err looking up entity ' + entity.value);
+                    cb(err);
+                    return
+                }
 
-                    if (!body.events) {
-                        results.push({
-                            entity: entity,
-                            data: null
-                        });
-                        cb();
-                        return;
-                    }
-
+                if (!body.events) {
+                    Logger.trace('no entity found for query ' + entity.value);
                     results.push({
                         entity: entity,
-                        data: {
-                            summary: [],
-                            details: body.events.result.entry.reduce((prev, next) => {
-                                prev[next.key] = next.value;
-                                return prev;
-                            }, {})
-                        }
+                        data: null
                     });
                     cb();
-                });
-        }, err => {
-            callback(err, results);
-        });
+                    return;
+                }
+
+                Logger.trace('found entity for ' + entity.value, body);
+                results.push({
+                    entity: entity,
+                    data: {
+                        summary: [],
+                        details: body.events.map(event => {
+                            return event.result.entry.reduce((prev, next) => {
+                                prev[next.key] = next.value;
+                                return prev;
+                            }, {});
+                        })
+                    }
+                });       
+                cb();
+            });
+    }, err => {
+        callback(err, results);
     });
 }
 
@@ -130,8 +129,9 @@ function validateStringOption(errors, options, optionName, errMessage) {
 function validateOptions(options, callback) {
     let errors = [];
 
-    // Example of how to validate a string option
-    validateStringOption(errors, options, 'exampleKey', 'You must provide an example option.');
+    validateStringOption(errors, options, 'host', 'You must provide a host.');
+    validateStringOption(errors, options, 'token', 'You must provide a token.');
+    validateStringOption(errors, options, 'tenant', 'You must provide a tenant ID.');
 
     callback(null, errors);
 }
